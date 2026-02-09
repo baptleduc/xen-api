@@ -1895,6 +1895,7 @@ module VM = struct
                       num_of_vifs
                   in
                   Mem.transfer_reservation_to_domain dbg domid reservation_id ;
+                  Xenctrl.domain_setmaxmem xc domid target_plus_overhead_kib ;
                   let initial_target =
                     let target_plus_overhead_bytes =
                       bytes_of_kib target_plus_overhead_kib
