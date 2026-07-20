@@ -118,7 +118,11 @@ val typ_of_build_pvh_info : build_pvh_info Rpc.Types.typ
 
 val build_pvh_info : build_pvh_info Rpc.Types.def
 
-type build_arm_info = {cmdline: string}
+type build_arm_info = {
+    cmdline: string
+  ; modules: (string * string option) list
+        (** list of modules plus optional cmdlines *)
+}
 
 val build_arm_info : build_arm_info Rpc.Types.def
 
