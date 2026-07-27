@@ -417,6 +417,13 @@ let make ~xc ~xs vm_info vcpus domain_config uuid final_uuid no_sharept
         ""
     ) ;
 
+  let is_arm =
+    match (domain_config : arch_domainconfig) with
+    | ARM _ ->
+        true
+    | X86 _ ->
+        false
+  in
   let config =
     {
       ssidref= vm_info.ssidref
@@ -428,6 +435,7 @@ let make ~xc ~xs vm_info vcpus domain_config uuid final_uuid no_sharept
         ; (iommu, CDF_IOMMU)
         ; (nested_virt, CDF_NESTED_VIRT)
         ; (vpmu, CDF_VPMU)
+        ; (is_arm, CDF_TRAP_UNMAPPED_ACCESSES)
         ]
         |> List.filter_map (fun (cond, flag) ->
             if cond then
