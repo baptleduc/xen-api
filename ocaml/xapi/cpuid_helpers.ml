@@ -62,25 +62,30 @@ let get_flags_for_vm ~__context domain_type cpu_info =
 
 (* Return the featureset to be used for the next boot of the given VM. *)
 let next_boot_cpu_features ~__context ~vm =
+  (* Always use VM.domain_type, even if the VM is running, because we
+     need the features for when the VM starts next. *)
+  let domain_type =
+    Db.VM.get_domain_type ~__context ~self:vm |> Helpers.check_domain_type
+  in
   (* On VM.start, the feature set is inherited from the pool level (PV or HVM) *)
-  let pool = Helpers.get_pool ~__context in
-  let pool_cpu_info = Db.Pool.get_cpu_info ~__context ~self:pool in
   let features_field_boot =
-    (* Always use VM.domain_type, even if the VM is running, because we
-       need the features for when the VM starts next. *)
-    let domain_type =
-      Db.VM.get_domain_type ~__context ~self:vm |> Helpers.check_domain_type
-    in
     match domain_type with
     | `hvm | `pv_in_pvh | `pvh ->
-        features_hvm_host
+        Some features_hvm_host
     | `pv ->
-        features_pv_host
+        Some features_pv_host
     | `arm ->
-        failwith "not implemented"
+        (* TODO: no CPU featureset levelling for ARM yet *)
+        None
   in
-  Map_check.getf features_field_boot pool_cpu_info
-  |> Xenops_interface.CPU_policy.to_string
+  match features_field_boot with
+  | None ->
+      ""
+  | Some field ->
+      let pool = Helpers.get_pool ~__context in
+      let pool_cpu_info = Db.Pool.get_cpu_info ~__context ~self:pool in
+      Map_check.getf field pool_cpu_info
+      |> Xenops_interface.CPU_policy.to_string
 
 let get_host_cpu_info ~__context ~host ?remote () =
   match remote with
@@ -114,7 +119,8 @@ let assert_vm_is_compatible ~__context ~vm ~host =
          )
       )
   in
-  if vm_rec.API.vM_power_state <> `Halted then (
+  (* TODO: no CPU featureset levelling for ARM yet, nothing to compare *)
+  if vm_rec.API.vM_power_state <> `Halted && domain_type <> `arm then (
     let host_uuid = Db.Host.get_uuid ~__context ~self:host in
     debug "Checking CPU compatibility of %s VM %s with host %s"
       (Record_util.domain_type_to_string domain_type)
