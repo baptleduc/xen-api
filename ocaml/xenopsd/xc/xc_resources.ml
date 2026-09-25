@@ -23,6 +23,8 @@ let igmp_query_injector_script =
 
 let vncterm = ref "vncterm"
 
+let pv_qemu = ref "/usr/lib64/xen/bin/qemu-system-i386"
+
 let xenguest = ref "xenguest"
 
 let emu_manager = ref "emu-manager"
@@ -85,6 +87,11 @@ let nonessentials =
   ; (X_OK, "vgpu", vgpu, "path to the vgpu binary")
   ; (X_OK, "varstored", varstored, "path to the varstored binary")
   ; (X_OK, "vncterm", vncterm, "path to the vncterm binary")
+  ; ( X_OK
+    , "pv-qemu"
+    , pv_qemu
+    , "path to the qemu binary providing PV (xenfb/vkbd) backends"
+    )
   ; (X_OK, "gimtool", gimtool, "path to the gimtool binary")
   ; ( X_OK
     , "igmp-query-injector-script"

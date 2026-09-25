@@ -4048,6 +4048,8 @@ let get_vnc_port ~xs ~dm domid =
   let qemu_exists = Service.Qemu.is_running ~xs domid in
   if qemu_exists then
     Dm.get_vnc_port ~xs ~dm domid
+  else if Service.PV_Qemu.is_running ~xs domid then
+    Service.PV_Qemu.get_vnc_port ~xs domid
   else
     Service.PV_Vnc.get_vnc_port ~xs domid
 

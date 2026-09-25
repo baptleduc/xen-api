@@ -2070,6 +2070,9 @@ module VM = struct
           () ;
         log_exn_continue "Error stoping vncterm, already dead ?"
           (fun () -> Service.PV_Vnc.stop ~xs domid)
+          () ;
+        log_exn_continue "Error stoping PV qemu, already dead ?"
+          (fun () -> Service.PV_Qemu.stop ~xs domid)
           ()
         (* If qemu is in a different domain to storage, detach disks *)
     )
@@ -2712,9 +2715,16 @@ module VM = struct
       match vm.Vm.ty with
       | PV {vncterm; vncterm_ip= ip; _}
       | PVH {vncterm; vncterm_ip= ip; _}
-      | PVinPVH {vncterm; vncterm_ip= ip; _}
-      | ARM {vncterm; vncterm_ip= ip; _} ->
+      | PVinPVH {vncterm; vncterm_ip= ip; _} ->
           if vncterm then Service.PV_Vnc.start ~xs ?ip di.Xenctrl.domid
+      | ARM {vncterm; vncterm_ip= ip; _} ->
+          if vncterm then Service.PV_Vnc.start ~xs ?ip di.Xenctrl.domid ;
+          if
+            Platform.is_true ~key:"vfb" ~platformdata:vm.Vm.platformdata
+              ~default:false
+          then
+            Service.PV_Qemu.start ~xs ~backend_domid:(this_domid ~xs)
+              di.Xenctrl.domid
       | HVM _ ->
           ()
     with Device.Ioemu_failed (name, msg) ->

@@ -973,3 +973,80 @@ module PV_Vnc = struct
 
   let stop ~xs domid = D.stop ~xs domid
 end
+
+module PV_Qemu = struct
+  let name = "pv-qemu"
+
+  let pidxenstore_path domid =
+    Printf.sprintf "/local/domain/%d/pv-qemu-pid" domid
+
+  let vnc_socket_path domid =
+    Printf.sprintf "%s/pv-vnc-%d" Device_common.var_run_xen_path domid
+
+  module D = DaemonMgmt (struct
+    let name = name
+
+    let pid_location = Pid.Xenstore pidxenstore_path
+
+    let expected_cmdline_items ~domid = [Printf.sprintf "pv-qemu-%d" domid]
+  end)
+
+  let is_running = D.is_running
+
+  let get_vnc_port ~xs domid =
+    if D.is_running ~xs domid then
+      Some (Socket.Unix (vnc_socket_path domid))
+    else
+      None
+
+  let wait_for_backends ~xs ~backend_domid domid =
+    let initialised kind =
+      let path =
+        Printf.sprintf "/local/domain/%d/backend/%s/%d/0/state" backend_domid
+          kind domid
+      in
+      try int_of_string (xs.Xs.read path) >= 2 with _ -> false
+    in
+    let rec loop n =
+      List.for_all initialised ["vfb"; "vkbd"]
+      || n > 0
+         && (Thread.delay 0.1 ;
+             loop (n - 1)
+            )
+    in
+    if not (loop 100) then
+      warn "%s: vfb/vkbd backends of domid %d not ready after 10s" name domid
+
+  let start ~xs ~backend_domid domid =
+    debug "In PV_Qemu.start" ;
+    let args =
+      [
+        "-xen-domid"
+      ; string_of_int domid
+      ; "-xen-attach"
+      ; "-name"
+      ; Printf.sprintf "pv-qemu-%d" domid
+      ; "-machine"
+      ; "xenpv"
+      ; "-vga"
+      ; "xenfb"
+      ; "-display"
+      ; "none"
+      ; "-vnc"
+      ; "unix:" ^ vnc_socket_path domid
+      ; "-nodefaults"
+      ; "-no-user-config"
+      ]
+    in
+    let pid = D.start_daemon ~path:!Xc_resources.pv_qemu ~args ~domid () in
+    xs.Xs.write (pidxenstore_path domid)
+      (string_of_int (Forkhelpers.getpid pid)) ;
+    Forkhelpers.dontwaitpid pid ;
+    wait_for_backends ~xs ~backend_domid domid
+
+  let stop ~xs domid =
+    D.stop ~xs domid ;
+    Xenops_utils.best_effort "removing PV qemu VNC socket" (fun () ->
+        Unixext.unlink_safe (vnc_socket_path domid)
+    )
+end

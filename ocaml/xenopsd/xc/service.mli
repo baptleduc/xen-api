@@ -105,6 +105,23 @@ module PV_Vnc : sig
     xs:Ezxenstore_core.Xenstore.Xs.xsh -> Xenctrl.domid -> int option
 end
 
+module PV_Qemu : sig
+  val is_running : xs:Ezxenstore_core.Xenstore.Xs.xsh -> Xenctrl.domid -> bool
+
+  val get_vnc_port :
+       xs:Ezxenstore_core.Xenstore.Xs.xsh
+    -> Xenctrl.domid
+    -> Xenops_utils.Socket.t option
+
+  val start :
+       xs:Ezxenstore_core.Xenstore.Xs.xsh
+    -> backend_domid:Xenctrl.domid
+    -> Xenctrl.domid
+    -> unit
+
+  val stop : xs:Ezxenstore_core.Xenstore.Xs.xsh -> Xenctrl.domid -> unit
+end
+
 module Varstored : sig
   val efivars_save_path : Xenops_sandbox.Chroot.Path.t
 
