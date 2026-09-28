@@ -1495,6 +1495,31 @@ let build (task : Xenops_task.task_handle) ~xc ~xs ~store_domid ~console_domid
         , [("rtc/timeoffset", timeoffset)]
         , `pvh
         )
+    | BuildARM {cmdline} ->
+        let memory =
+          Memory.Linux.full_config static_max_mib 0 target_mib vcpus 1.0
+        in
+        let store_port, console_port, numa_placement =
+          build_pre ~xc ~xs ~memory ~vcpus ~hard_affinity domid
+        in
+        (* TODO modules *)
+        let store_mfn, console_mfn =
+          let args =
+            xenguest_args_pvh ~domid ~store_port ~store_domid ~console_port
+              ~console_domid ~memory ~kernel ~cmdline ~modules:[]
+              ~numa_placement
+            @ force_arg
+            @ extras
+          in
+          xenguest task xenguest_path domid uuid args
+        in
+        ( store_mfn
+        , store_port
+        , console_mfn
+        , console_port
+        , [("rtc/timeoffset", timeoffset)]
+        , `pvh
+        )
   in
   let local_stuff = console_keys console_port console_mfn in
   build_post ~xc ~xs ~target_mib ~static_max_mib domid domain_type store_mfn
