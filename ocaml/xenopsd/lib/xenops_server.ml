@@ -1417,6 +1417,9 @@ let export_metadata vdi_map vif_map vgpu_pci_map id =
                         }
                   )
               }
+        | Vm.ARM _ ->
+            (* only direct boot: no bootloader VDIs to remap *)
+            vm_t.Vm.ty
         )
     }
   in
@@ -1496,6 +1499,8 @@ let import_metadata id md =
             Host.(stat.cpu_info.features_hvm)
         | PV _ ->
             Host.(stat.cpu_info.features_pv)
+        | ARM _ ->
+            failwith "not implemented"
       in
       let fs' = CPU_policy.to_string fs in
       debug "Setting Platformdata:featureset=%s" fs' ;

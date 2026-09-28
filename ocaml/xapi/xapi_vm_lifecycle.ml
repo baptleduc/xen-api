@@ -174,7 +174,7 @@ let has_definitely_booted_pv ~vmmr =
     match r.Db_actions.vM_metrics_current_domain_type with
     | `hvm | `unspecified ->
         false
-    | `pv | `pv_in_pvh | `pvh ->
+    | `pv | `pv_in_pvh | `pvh | `arm ->
         true
   )
 

@@ -118,10 +118,15 @@ val typ_of_build_pvh_info : build_pvh_info Rpc.Types.typ
 
 val build_pvh_info : build_pvh_info Rpc.Types.def
 
+type build_arm_info = {cmdline: string}
+
+val build_arm_info : build_arm_info Rpc.Types.def
+
 type builder_spec_info =
   | BuildHVM of build_hvm_info
   | BuildPV of build_pv_info
   | BuildPVH of build_pvh_info
+  | BuildARM of build_arm_info
 
 val typ_of_builder_spec_info : builder_spec_info Rpc.Types.typ
 
@@ -194,7 +199,7 @@ val shutdown_wait_for_ack :
   -> xc:Xenctrl.handle
   -> xs:Ezxenstore_core.Xenstore.Xs.xsh
   -> domid
-  -> [`hvm | `pv | `pvh]
+  -> [`hvm | `pv | `pvh | `arm]
   -> shutdown_reason
   -> unit
 (** Tell the domain to shutdown with reason 'shutdown_reason', waiting for an
@@ -249,7 +254,7 @@ val resume :
   -> xc:Xenctrl.handle
   -> xs:Ezxenstore_core.Xenstore.Xs.xsh
   -> qemu_domid:int
-  -> domain_type:[`hvm | `pv | `pvh]
+  -> domain_type:[`hvm | `pv | `pvh | `arm]
   -> domid
   -> unit
 (** Fast resume *)
@@ -276,7 +281,7 @@ val suspend :
      Xenops_task.Xenops_task.task_handle
   -> xc:Xenctrl.handle
   -> xs:Ezxenstore_core.Xenstore.Xs.xsh
-  -> domain_type:[`hvm | `pv | `pvh]
+  -> domain_type:[`hvm | `pv | `pvh | `arm]
   -> is_uefi:bool
   -> dm:Device.Profile.t
   -> manager_path:string

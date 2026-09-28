@@ -1065,6 +1065,8 @@ let domain_type_to_string = function
       "pv-in-pvh"
   | `pvh ->
       "pvh"
+  | `arm ->
+      "arm"
   | `unspecified ->
       "unspecified"
 
