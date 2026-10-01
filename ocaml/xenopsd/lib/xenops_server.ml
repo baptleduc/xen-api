@@ -1417,7 +1417,7 @@ let export_metadata vdi_map vif_map vgpu_pci_map id =
                         }
                   )
               }
-        | Vm.ARM _ ->
+        | Vm.ARM _ | Vm.RISCV _ ->
             (* only direct boot: no bootloader VDIs to remap *)
             vm_t.Vm.ty
         )
@@ -1499,7 +1499,7 @@ let import_metadata id md =
             Host.(stat.cpu_info.features_hvm)
         | PV _ ->
             Host.(stat.cpu_info.features_pv)
-        | ARM _ ->
+        | ARM _ | RISCV _ ->
             failwith "not implemented"
       in
       let fs' = CPU_policy.to_string fs in

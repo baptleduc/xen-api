@@ -55,6 +55,8 @@ let get_flags_for_vm ~__context domain_type cpu_info =
         features_pv
     | `arm ->
         failwith "not implemented"
+    | `riscv ->
+        failwith "not implemented"
   in
   let vendor = List.assoc Constants.cpu_info_vendor_key cpu_info in
   let migration = Map_check.getf features_field cpu_info in
@@ -77,6 +79,8 @@ let next_boot_cpu_features ~__context ~vm =
     | `arm ->
         (* TODO: no CPU featureset levelling for ARM yet *)
         None
+    | `riscv ->
+        failwith "not implemented"
   in
   match features_field_boot with
   | None ->

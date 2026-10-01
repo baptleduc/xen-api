@@ -120,7 +120,7 @@ let valid_operations ~__context record _ref' : table =
     match Helpers.domain_type ~__context ~self:vm with
     | `hvm ->
         true
-    | `pv_in_pvh | `pv | `pvh | `arm ->
+    | `pv_in_pvh | `pv | `pvh | `arm | `riscv ->
         false
   in
   ( if power_state = `Running && needs_driver_check () then

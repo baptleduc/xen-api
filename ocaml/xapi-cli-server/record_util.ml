@@ -494,6 +494,8 @@ let domain_type_to_string = function
       "pvh"
   | `arm ->
       "arm"
+  | `riscv ->
+      "riscv"
   | `unspecified ->
       "unspecified"
 
@@ -510,6 +512,8 @@ let domain_type_of_string x =
       `pvh
   | "arm" ->
       `arm
+  | "riscv" ->
+      `riscv
   | s ->
       record_failure "Invalid domain type. Got %s" s
 

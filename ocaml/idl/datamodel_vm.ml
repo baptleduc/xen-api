@@ -2317,6 +2317,7 @@ let domain_type =
       ; ("pv_in_pvh", "PV inside a PVH container")
       ; ("pvh", "PVH")
       ; ("arm", "The only type of a VM on the ARM platform")
+      ; ("riscv", "The only type of a VM on the RISC-V platform")
       ; ("unspecified", "Not specified or unknown domain type")
       ]
     )

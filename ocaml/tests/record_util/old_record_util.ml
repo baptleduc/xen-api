@@ -1067,6 +1067,8 @@ let domain_type_to_string = function
       "pvh"
   | `arm ->
       "arm"
+  | `riscv ->
+      "riscv"
   | `unspecified ->
       "unspecified"
 

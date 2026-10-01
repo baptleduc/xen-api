@@ -37,6 +37,11 @@ type xen_arm_arch_domainconfig = Xenctrl.xen_arm_arch_domainconfig = {
 }
 [@@deriving rpcty]
 
+type xen_riscv_arch_domainconfig = Xenctrl.xen_riscv_arch_domainconfig = {
+    imsic_base_addr: int64
+}
+[@@deriving rpcty]
+
 type x86_arch_emulation_flags = Xenctrl.x86_arch_emulation_flags =
   | X86_EMU_LAPIC
   | X86_EMU_HPET
@@ -65,6 +70,7 @@ type xen_x86_arch_domainconfig = Xenctrl.xen_x86_arch_domainconfig = {
 type arch_domainconfig = Xenctrl.arch_domainconfig =
   | ARM of xen_arm_arch_domainconfig
   | X86 of xen_x86_arch_domainconfig
+  | RISCV of xen_riscv_arch_domainconfig
 [@@deriving rpcty]
 
 type domain_create_flag = Xenctrl.domain_create_flag =
@@ -154,11 +160,14 @@ type build_arm_info = {
 }
 [@@deriving rpcty]
 
+type build_riscv_info = {cmdline: string} [@@deriving rpcty]
+
 type builder_spec_info =
   | BuildHVM of build_hvm_info
   | BuildPV of build_pv_info
   | BuildPVH of build_pvh_info
   | BuildARM of build_arm_info
+  | BuildRISCV of build_riscv_info
 [@@deriving rpcty]
 
 type build_info = {
@@ -421,7 +430,7 @@ let make ~xc ~xs vm_info vcpus domain_config uuid final_uuid no_sharept
     match (domain_config : arch_domainconfig) with
     | ARM _ ->
         true
-    | X86 _ ->
+    | X86 _ | RISCV _ ->
         false
   in
   let config =
@@ -781,7 +790,7 @@ let shutdown ~xc ~xs domid req =
     respond then throw a Watch.Timeout exception. All other exceptions imply the
     domain has disappeared. *)
 let shutdown_wait_for_ack (t : Xenops_task.task_handle) ~timeout ~xc ~xs domid
-    (domain_type : [`pv | `pvh | `hvm | `arm]) req =
+    (domain_type : [`pv | `pvh | `hvm | `arm | `riscv]) req =
   let di = Xenctrl.domain_getinfo xc domid in
   let uuid = get_uuid ~xc domid in
   let uuid = Uuidx.to_string uuid in
@@ -789,8 +798,8 @@ let shutdown_wait_for_ack (t : Xenops_task.task_handle) ~timeout ~xc ~xs domid
     match (di.Xenctrl.hvm_guest, domain_type) with
     | false, _ ->
         true (* PV guests always acknowledge *)
-    | true, `pvh | true, `arm ->
-        true (* PVH and ARM guests are also always enlightened *)
+    | true, `pvh | true, `arm | true, `riscv ->
+        true (* PVH, ARM and RISC-V guests are also always enlightened *)
     | true, `hvm ->
         Xenctrl.hvm_param_get xc domid HVM_PARAM_CALLBACK_IRQ <> 0L
     | true, `pv ->
@@ -1396,7 +1405,7 @@ let build_post ~xc ~xs ~static_max_mib ~target_mib domid domain_type store_mfn
       Xs.transaction xs (fun t -> t.Xst.writev vm_path vments)
   ) ;
   let libxl_dom_type =
-    match domain_type with `pv -> "PV" | `hvm -> "HVM" | `pvh -> "PVH" | `arm -> "PVH"
+    match domain_type with `pv -> "PV" | `hvm -> "HVM" | `pvh -> "PVH" | `arm -> "PVH" | `riscv -> "PVH"
   in
   xs.Xs.write (sprintf "/libxl/%d/type" domid) libxl_dom_type ;
   debug "VM = %s; domid = %d; @introduceDomain" (Uuidx.to_string uuid) domid ;
@@ -1570,7 +1579,7 @@ let with_emu_manager_restore (task : Xenops_task.task_handle) ~domain_type
     ~(dm : Device.Profile.t) ~store_port ~console_port ~extras ~numa_placements
     manager_path domid _uuid main_fd vgpu_fd f =
   let mode =
-    match domain_type with `hvm | `pvh -> "hvm_restore" | `pv | `arm -> "restore"
+    match domain_type with `hvm | `pvh -> "hvm_restore" | `pv | `arm | `riscv -> "restore"
   in
   let fd_uuid = Uuidx.(to_string (make ())) in
   let vgpu_args, vgpu_cmdline =
@@ -1972,6 +1981,13 @@ let restore (task : Xenops_task.task_handle) ~xc ~xs ~dm ~timeoffset ~extras
             shadow_multiplier
         in
         (memory, [], `arm)
+    | BuildRISCV _info ->
+        let shadow_multiplier = Memory.Linux.shadow_multiplier_default in
+        let memory =
+          Memory.Linux.full_config static_max_mib video_mib target_mib vcpus
+            shadow_multiplier
+        in
+        (memory, [], `riscv)
   in
   let memory =
     match info.memory_total_source with
@@ -2004,7 +2020,7 @@ let suspend_emu_manager ~(task : Xenops_task.task_handle) ~xs ~domain_type
   let open Emu_manager in
   let fd_uuid = Uuidx.(to_string (make ())) in
   let mode =
-    match domain_type with `hvm | `pvh -> "hvm_save" | `pv | `arm -> "save"
+    match domain_type with `hvm | `pvh -> "hvm_save" | `pv | `arm | `riscv -> "save"
   in
   let vgpu_args, vgpu_cmdline =
     match vgpu_fd with

@@ -136,6 +136,7 @@ module Vm = struct
     | PVinPVH of pv_info
     | PVH of pv_info
     | ARM of pv_info
+    | RISCV of pv_info
   [@@deriving rpcty, sexp]
 
   type id = string [@@deriving rpcty, sexp]
@@ -187,6 +188,7 @@ module Vm = struct
     | Domain_PVinPVH
     | Domain_PVH
     | Domain_ARM
+    | Domain_RISCV
     | Domain_undefined
   [@@deriving rpcty, sexp]
 

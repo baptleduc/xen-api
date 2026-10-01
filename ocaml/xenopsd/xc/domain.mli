@@ -41,6 +41,10 @@ type xen_arm_arch_domainconfig = {
   ; clock_frequency: int32
 }
 
+type xen_riscv_arch_domainconfig = {
+    (* Xenctrl.xen_riscv_arch_domainconfig = *) imsic_base_addr: int64
+}
+
 type x86_arch_emulation_flags =
   (* Xenctrl.x86_arch_emulation_flags = *)
   | X86_EMU_LAPIC
@@ -71,6 +75,7 @@ type arch_domainconfig =
   (* Xenctrl.arch_domainconfig = *)
   | ARM of xen_arm_arch_domainconfig
   | X86 of xen_x86_arch_domainconfig
+  | RISCV of xen_riscv_arch_domainconfig
 
 val typ_of_arch_domainconfig : arch_domainconfig Rpc.Types.typ
 
@@ -126,11 +131,16 @@ type build_arm_info = {
 
 val build_arm_info : build_arm_info Rpc.Types.def
 
+type build_riscv_info = {cmdline: string}
+
+val build_riscv_info : build_riscv_info Rpc.Types.def
+
 type builder_spec_info =
   | BuildHVM of build_hvm_info
   | BuildPV of build_pv_info
   | BuildPVH of build_pvh_info
   | BuildARM of build_arm_info
+  | BuildRISCV of build_riscv_info
 
 val typ_of_builder_spec_info : builder_spec_info Rpc.Types.typ
 
@@ -203,7 +213,7 @@ val shutdown_wait_for_ack :
   -> xc:Xenctrl.handle
   -> xs:Ezxenstore_core.Xenstore.Xs.xsh
   -> domid
-  -> [`hvm | `pv | `pvh | `arm]
+  -> [`hvm | `pv | `pvh | `arm | `riscv]
   -> shutdown_reason
   -> unit
 (** Tell the domain to shutdown with reason 'shutdown_reason', waiting for an
@@ -258,7 +268,7 @@ val resume :
   -> xc:Xenctrl.handle
   -> xs:Ezxenstore_core.Xenstore.Xs.xsh
   -> qemu_domid:int
-  -> domain_type:[`hvm | `pv | `pvh | `arm]
+  -> domain_type:[`hvm | `pv | `pvh | `arm | `riscv]
   -> domid
   -> unit
 (** Fast resume *)
@@ -285,7 +295,7 @@ val suspend :
      Xenops_task.Xenops_task.task_handle
   -> xc:Xenctrl.handle
   -> xs:Ezxenstore_core.Xenstore.Xs.xsh
-  -> domain_type:[`hvm | `pv | `pvh | `arm]
+  -> domain_type:[`hvm | `pv | `pvh | `arm | `riscv]
   -> is_uefi:bool
   -> dm:Device.Profile.t
   -> manager_path:string
