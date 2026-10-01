@@ -160,7 +160,12 @@ type build_arm_info = {
 }
 [@@deriving rpcty]
 
-type build_riscv_info = {cmdline: string} [@@deriving rpcty]
+type build_riscv_info = {
+    cmdline: string
+  ; modules: (string * string option) list
+        (** list of modules plus optional cmdlines *)
+}
+[@@deriving rpcty]
 
 type builder_spec_info =
   | BuildHVM of build_hvm_info
@@ -1524,6 +1529,30 @@ let build (task : Xenops_task.task_handle) ~xc ~xs ~store_domid ~console_domid
         , `pvh
         )
     | BuildARM {cmdline; modules} ->
+        let memory =
+          Memory.Linux.full_config static_max_mib 0 target_mib vcpus 1.0
+        in
+        let store_port, console_port, numa_placement =
+          build_pre ~xc ~xs ~memory ~vcpus ~hard_affinity domid
+        in
+        let store_mfn, console_mfn =
+          let args =
+            xenguest_args_pvh ~domid ~store_port ~store_domid ~console_port
+              ~console_domid ~memory ~kernel ~cmdline ~modules
+              ~numa_placement
+            @ force_arg
+            @ extras
+          in
+          xenguest task xenguest_path domid uuid args
+        in
+        ( store_mfn
+        , store_port
+        , console_mfn
+        , console_port
+        , [("rtc/timeoffset", timeoffset)]
+        , `pvh
+        )
+    | BuildRISCV {cmdline; modules} ->
         let memory =
           Memory.Linux.full_config static_max_mib 0 target_mib vcpus 1.0
         in

@@ -131,7 +131,11 @@ type build_arm_info = {
 
 val build_arm_info : build_arm_info Rpc.Types.def
 
-type build_riscv_info = {cmdline: string}
+type build_riscv_info = {
+    cmdline: string
+  ; modules: (string * string option) list
+        (** list of modules plus optional cmdlines *)
+}
 
 val build_riscv_info : build_riscv_info Rpc.Types.def
 

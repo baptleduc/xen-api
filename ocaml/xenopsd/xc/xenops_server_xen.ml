@@ -2625,7 +2625,19 @@ module VM = struct
               raise (Xenopsd_error No_bootable_device)
           | RISCV {boot= Direct direct; _} ->
               let builder_spec_info =
-                Domain.(BuildRISCV {cmdline= direct.cmdline})
+                Domain.(
+                  BuildRISCV
+                    {
+                      cmdline= direct.cmdline
+                    ; modules=
+                        ( match direct.ramdisk with
+                        | Some r ->
+                            [(r, None)]
+                        | None ->
+                            []
+                        )
+                    }
+                )
               in
               (make_build_info direct.kernel builder_spec_info, "")
         in
