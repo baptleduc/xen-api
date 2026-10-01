@@ -52,9 +52,12 @@ let common_options_t =
     )
   in
   let queue =
-    let default = Some "org.xen.xapi.xenops.classic" in
-    let doc = Printf.sprintf "Specify queue name in message switch." in
-    Arg.(value & opt (some string) default & info ["queue"] ~docs ~doc)
+    let doc =
+      "Specify queue name in message switch (e.g. \
+       org.xen.xapi.xenops.classic). Without it, talk to the server socket \
+       directly."
+    in
+    Arg.(value & opt (some string) None & info ["queue"] ~docs ~doc)
   in
   Term.(const Common.make $ debug $ verb $ socket $ queue)
 

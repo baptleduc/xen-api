@@ -18,7 +18,8 @@ let make verbose debug socket queue =
   Xenops_interface.default_path := socket ;
   ( match queue with
   | None ->
-      ()
+      (* talk to xenopsd's socket directly, not through message-switch *)
+      Xcp_client.use_switch := false
   | Some name ->
       Xenops_interface.queue_name := name ;
       Xcp_client.use_switch := true
