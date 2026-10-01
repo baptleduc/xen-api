@@ -82,7 +82,6 @@ type domain_create_flag = Xenctrl.domain_create_flag =
   | CDF_IOMMU
   | CDF_NESTED_VIRT
   | CDF_VPMU
-  | CDF_TRAP_UNMAPPED_ACCESSES
 [@@deriving rpcty]
 
 type domain_create_iommu_opts = Xenctrl.domain_create_iommu_opts =
@@ -115,9 +114,6 @@ type domctl_create_config = Xenctrl.domctl_create_config = {
   ; max_grant_frames: int
   ; max_maptrack_frames: int
   ; max_grant_version: int
-  ; altp2m_opts: int32
-  ; altp2m_count: int32
-  ; vmtrace_buf_kb: int32
   ; cpupool_id: int32
   ; arch: arch_domainconfig
 }
@@ -431,13 +427,6 @@ let make ~xc ~xs vm_info vcpus domain_config uuid final_uuid no_sharept
         ""
     ) ;
 
-  let is_arm =
-    match (domain_config : arch_domainconfig) with
-    | ARM _ ->
-        true
-    | X86 _ | RISCV _ ->
-        false
-  in
   let config =
     {
       ssidref= vm_info.ssidref
@@ -449,7 +438,6 @@ let make ~xc ~xs vm_info vcpus domain_config uuid final_uuid no_sharept
         ; (iommu, CDF_IOMMU)
         ; (nested_virt, CDF_NESTED_VIRT)
         ; (vpmu, CDF_VPMU)
-        ; (is_arm, CDF_TRAP_UNMAPPED_ACCESSES)
         ]
         |> List.filter_map (fun (cond, flag) ->
             if cond then
@@ -550,9 +538,6 @@ let make ~xc ~xs vm_info vcpus domain_config uuid final_uuid no_sharept
           else
             1
         )
-    ; altp2m_opts= 0l
-    ; altp2m_count= 0l
-    ; vmtrace_buf_kb= 0l
     ; cpupool_id= 0l
     ; arch= domain_config
     }
