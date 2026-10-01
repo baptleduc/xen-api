@@ -2742,10 +2742,9 @@ module VM = struct
       match vm.Vm.ty with
       | PV {vncterm; vncterm_ip= ip; _}
       | PVH {vncterm; vncterm_ip= ip; _}
-      | PVinPVH {vncterm; vncterm_ip= ip; _}
-      | RISCV {vncterm; vncterm_ip= ip; _} ->
+      | PVinPVH {vncterm; vncterm_ip= ip; _} ->
           if vncterm then Service.PV_Vnc.start ~xs ?ip di.Xenctrl.domid
-      | ARM {vncterm; vncterm_ip= ip; _} ->
+      | ARM {vncterm; vncterm_ip= ip; _} | RISCV {vncterm; vncterm_ip= ip; _} ->
           if vncterm then Service.PV_Vnc.start ~xs ?ip di.Xenctrl.domid ;
           if
             Platform.is_true ~key:"vfb" ~platformdata:vm.Vm.platformdata
