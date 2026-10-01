@@ -482,8 +482,9 @@ let add' _copts x () =
           let find x = List.assoc x config in
           let find_opt x = List.assoc_opt x config in
           let any xs = List.exists mem xs in
+          let riscv = mem _builder && find _builder |> string = "riscv" in
           let pv =
-            false
+            riscv
             || mem _builder
                && List.mem (find _builder |> string) ["linux"; "generic"]
             || ((not (mem _builder)) && any [_bootloader; _kernel])
@@ -594,6 +595,15 @@ let add' _copts x () =
                           None
                       )
                   }
+          in
+          (* ponytail: a RISC-V guest is a PV-style direct boot, built by
+             xenguest in pvh_build mode; no vncterm on RISC-V *)
+          let builder_info =
+            match builder_info with
+            | PV p when riscv ->
+                RISCV {p with vncterm= false}
+            | b ->
+                b
           in
           let uuid =
             if mem _uuid then
