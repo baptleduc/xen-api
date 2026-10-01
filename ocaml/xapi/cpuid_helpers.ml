@@ -80,7 +80,8 @@ let next_boot_cpu_features ~__context ~vm =
         (* TODO: no CPU featureset levelling for ARM yet *)
         None
     | `riscv ->
-        failwith "not implemented"
+        (* TODO: no CPU featureset levelling for RISC-V yet *)
+        None
   in
   match features_field_boot with
   | None ->
@@ -123,8 +124,12 @@ let assert_vm_is_compatible ~__context ~vm ~host =
          )
       )
   in
-  (* TODO: no CPU featureset levelling for ARM yet, nothing to compare *)
-  if vm_rec.API.vM_power_state <> `Halted && domain_type <> `arm then (
+  (* TODO: no CPU featureset levelling for ARM/RISC-V yet, nothing to compare *)
+  if
+    vm_rec.API.vM_power_state <> `Halted
+    && domain_type <> `arm
+    && domain_type <> `riscv
+  then (
     let host_uuid = Db.Host.get_uuid ~__context ~self:host in
     debug "Checking CPU compatibility of %s VM %s with host %s"
       (Record_util.domain_type_to_string domain_type)
