@@ -414,7 +414,7 @@ let operation (obj : obj) (x : message) =
   in
   name_pattern_match
   ^ "\n"
-  ^ "        begin match __params with\n"
+  ^ "        Some begin match __params with\n"
   ^ "        | "
   ^ arg_pattern
   ^ " -> "
@@ -441,8 +441,34 @@ let operation (obj : obj) (x : message) =
 let gen_module api : O.Module.t =
   (* For testing purposes the ocaml client and server are kept in sync *)
   let api = Client.client_api ~sync:true api in
-  let obj (obj : obj) = List.map (operation obj) obj.messages in
   let all_objs = Dm_api.objects_of_api api in
+  (* One dispatcher per class rather than a single match over every
+     message: the latter compiles to a function too big for the +-1MiB
+     direct jumps of ocamlopt's RISC-V backend. *)
+  let dispatch_name (obj : obj) = "dispatch_" ^ obj.name in
+  let dispatch_obj (obj : obj) =
+    O.Module.Let
+      (O.Let.make ~name:(dispatch_name obj)
+         ~params:
+           [
+             O.Anon (Some "__context", "Context.t")
+           ; O.Anon (Some "http_req", "Http.Request.t")
+           ; O.Anon (Some "fd", "Unix.file_descr")
+           ; O.Anon (Some "call", "Rpc.call")
+           ; O.Anon (Some "__call", "string")
+           ; O.Anon (Some "__params", "Rpc.t list")
+           ; O.Anon (Some "__label", "string")
+           ; O.Anon (Some "__sync_ty", "_")
+           ]
+         ~ty:"response option"
+         ~body:
+           (["match __call with"]
+           @ List.map (operation obj) obj.messages
+           @ ["| _ -> None"]
+           )
+         ()
+      )
+  in
   O.Module.make ~name:module_name
     ~args:
       [
@@ -459,7 +485,8 @@ let gen_module api : O.Module.t =
         (*      "exception Invalid_operation"; *)
       ]
     ~elements:
-      [
+      (List.map dispatch_obj all_objs
+      @ [
         O.Module.Let
           (O.Let.make ~name:"dispatch_call"
              ~params:
@@ -488,12 +515,16 @@ let gen_module api : O.Module.t =
                    (\"dispatch:\"^__call^\"\") ~http_other_config \
                    ?subtask_of:(Option.map Ref.of_string subtask_of) (fun \
                    __context ->"
-                ; "Server_helpers.dispatch_exn_wrapper (fun () -> (match \
-                   __call with "
+                ; "Server_helpers.dispatch_exn_wrapper (fun () ->"
+                ; "match List.find_map (fun dispatch -> dispatch __context \
+                   http_req fd call __call __params __label __sync_ty) ["
                 ]
-               @ List.concat_map obj all_objs
+               @ List.map (fun obj -> dispatch_name obj ^ ";") all_objs
                @ [
-                   "| \"system.listMethods\" -> "
+                   "] with"
+                 ; "| Some resp -> resp"
+                 ; "| None -> (match __call with"
+                 ; "| \"system.listMethods\" -> "
                  ; "  success (rpc_of_string_set ["
                  ]
                @ (let objmsgs obj =
@@ -549,4 +580,5 @@ let gen_module api : O.Module.t =
              ()
           )
       ]
+      )
     ()
