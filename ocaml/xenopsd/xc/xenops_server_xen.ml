@@ -3490,7 +3490,9 @@ module VM = struct
                 | None ->
                     ""
                 | Some x ->
-                    List.assoc "featureset" x.VmExtra.persistent.platformdata
+                    List.assoc_opt "featureset"
+                      x.VmExtra.persistent.platformdata
+                    |> Option.value ~default:""
                 )
             ; numa_optimised= numa.Xenctrlext.DomainNuma.optimised
             ; numa_nodes= numa.Xenctrlext.DomainNuma.nodes
