@@ -119,6 +119,9 @@ module Iostat = struct
   type t = float list
 
   let get_unsafe (devs : string list) : (string * t) list =
+    (* No tapdisks: nothing to ask for, and a dom0 without tapdisks may
+       have no iostat either *)
+    if devs = [] then [] else
     (* A map from device names to the parsed values *)
     let dev_values_map : (string, t) Hashtbl.t = Hashtbl.create 20 in
 
@@ -935,12 +938,58 @@ let sr_vdi_to_last_stats_values = ref None
 
 let domid_devid_to_last_stats_blktap3 = ref None
 
+(* Disks that blkback serves straight from a kernel block device, with no
+   tapdisk in between (the RISC-V dom0: loop devices on a tmpfs, from the
+   rawfile SM driver). The driver puts sr-uuid and vdi-uuid under sm-data,
+   and params names the device, whose /sys/block stat has what the tapdev
+   path reads. *)
+let get_blkback_devs () : ((string * string) * string) list =
+  try
+    let _, domUs, _ = Xenctrl.with_intf Xenctrl_lib.domain_snapshot in
+    with_xs (fun xs ->
+        List.concat_map
+          (fun (_, _, domid) ->
+            let path = Printf.sprintf "/local/domain/0/backend/vbd/%d" domid in
+            let vbds =
+              try xs.Xs.directory path with Xs_protocol.Enoent _ -> []
+            in
+            List.filter_map
+              (fun vbd ->
+                let read key =
+                  xs.Xs.read (Printf.sprintf "%s/%s/%s" path vbd key)
+                in
+                try
+                  let params = read "params" in
+                  let sr = read "sm-data/sr-uuid" in
+                  let vdi = read "sm-data/vdi-uuid" in
+                  let dev = Filename.basename params in
+                  if
+                    String.length sr >= 8
+                    && Filename.dirname params = "/dev"
+                    && not (String.length dev >= 2 && String.sub dev 0 2 = "td")
+                    && Sys.file_exists ("/sys/block/" ^ dev ^ "/stat")
+                  then
+                    Some ((sr, vdi), dev)
+                  else
+                    None
+                with Xs_protocol.Enoent _ -> None
+              )
+              vbds
+          )
+          domUs
+    )
+  with e ->
+    D.error "%s: %s" __FUNCTION__ (Printexc.to_string e) ;
+    []
+
 let gen_metrics () =
   let domid_devid_to_stats_blktap3 =
     Blktap3_stats_wrapper.get_domid_devid_to_stats_blktap3 ()
   in
 
-  let sr_and_vdi_to_minor = exec_tap_ctl_list () in
+  let sr_and_vdi_to_minor =
+    if Sys.file_exists "/usr/sbin/tap-ctl" then exec_tap_ctl_list () else []
+  in
   let tapdevs = get_tapdevs () in
 
   let map_sr_and_vdi_to_stats minor_to_tapdev_stat =
@@ -960,6 +1009,25 @@ let gen_metrics () =
   in
   let sr_vdi_to_stats : ((string * string) * Stat.t option) list =
     tapdevs |> get_minor_to_stats |> map_sr_and_vdi_to_stats
+  in
+  let sr_vdi_to_stats =
+    let blkback =
+      get_blkback_devs ()
+      |> List.filter (fun (sr_vdi, _) ->
+             not (List.mem_assoc sr_vdi sr_vdi_to_stats)
+         )
+    in
+    (* The VDI-to-VM map is otherwise only refreshed from tap-ctl list *)
+    if
+      List.exists
+        (fun ((_, vdi), _) -> not (List.mem_assoc vdi !vdi_to_vm_map))
+        blkback
+    then
+      update_vdi_to_vm_map () ;
+    sr_vdi_to_stats
+    @ List.map
+        (fun (sr_vdi, dev) -> (sr_vdi, Some (Stat.get_unsafe_dev dev)))
+        blkback
   in
 
   (* relations between dom-id, vm-uuid, device pos, dev-id, etc *)
