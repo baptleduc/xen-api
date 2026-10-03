@@ -9,6 +9,7 @@
     rrdd-plugin
     rrdd_plugin_xenctrl
     rrdd_plugins_libs
+    xapi-idl
     xapi-idl.network
     xapi-idl.rrd
     xapi-log
