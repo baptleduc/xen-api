@@ -54,6 +54,17 @@ let get_link_stats dbg () =
     Network_client.Client.Interface.get_interface_positions dbg ()
     |> List.map fst
   in
+  (* xcp-networkd orders NICs with biosdevname, which needs a PCI bus
+     address: the virtio-mmio NIC of the RISC-V dom0 has none, so the list
+     comes back empty. Fall back to the ethN devices then *)
+  let managed_host_net_devs =
+    if managed_host_net_devs = [] then
+      Sys.readdir "/sys/class/net"
+      |> Array.to_list
+      |> List.filter (fun n -> Astring.String.is_prefix ~affix:"eth" n)
+    else
+      managed_host_net_devs
+  in
   let open Netlink in
   let s = Socket.alloc () in
   Socket.connect s Socket.NETLINK_ROUTE ;
