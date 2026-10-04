@@ -292,10 +292,12 @@ let generate_netdev_dss () =
 
 let _ =
   Process.initialise () ;
-  (* The RISC-V dom0 runs xcp-networkd without message-switch
-     (use-switch=false): call it on its socket directly, or the first
-     Network_client call retries the absent switch forever *)
-  Xcp_client.use_switch := false ;
+  (* rrdp-netdev reads no config file, so take use-switch from what runs:
+     where message-switch runs, xcp-networkd listens on it only; where it
+     does not (a dom0 with use-switch=false everywhere), call networkd on
+     its socket directly, or the first Network_client call retries the
+     absent switch forever *)
+  Xcp_client.use_switch := Sys.file_exists !Xcp_client.switch_path ;
   (* Share one page per virtual NIC - documentation specifies max is 512 *)
   let shared_page_count = 512 in
   Process.main_loop ~neg_shift:0.5 ~target:(Reporter.Local shared_page_count)
