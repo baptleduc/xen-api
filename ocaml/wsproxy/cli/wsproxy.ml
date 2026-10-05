@@ -104,7 +104,7 @@ let proxy (fd : Lwt_unix.file_descr) addr protocol =
   )
 
 module RX = struct
-  let socket = Re.Posix.compile_pat "^/var/run/xen/vnc-[0-9]+$"
+  let socket = Re.Posix.compile_pat "^/var/run/xen/(pv-)?vnc-[0-9]+$"
 
   let port = Re.Posix.compile_pat "^[0-9]+$"
 end
