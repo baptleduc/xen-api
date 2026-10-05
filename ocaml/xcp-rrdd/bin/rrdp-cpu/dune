@@ -1,6 +1,7 @@
 (executable
   (modes exe)
   (name rrdp_cpu)
+  (modules rrdd_common rrdp_cpu runstate)
   (libraries
     astring
     rrdd-plugin
@@ -18,4 +19,20 @@
   (package xapi)
   (files (rrdp_cpu.exe as xcp-rrdd-plugins/xcp-rrdd-cpu))
   (section libexec_root)
+)
+
+; Runstate data sources need Xenctrl.Runstateinfo, a XenServer patch to
+; Xen's OCaml bindings that upstream Xen does not carry. The RISC-V port
+; builds against upstream Xen, so it gets the variant without them; every
+; other architecture keeps the XenServer code, unchanged.
+(rule
+  (target runstate.ml)
+  (enabled_if (<> %{architecture} riscv))
+  (action (copy runstate_xenserver.ml runstate.ml))
+)
+
+(rule
+  (target runstate.ml)
+  (enabled_if (= %{architecture} riscv))
+  (action (copy runstate_upstream.ml runstate.ml))
 )
