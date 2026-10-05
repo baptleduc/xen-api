@@ -332,18 +332,42 @@ module Generic = struct
     clean_shutdown_async ~xs x ;
     clean_shutdown_wait task ~xs ~ignore_transients:false x
 
+  let run_hotplug_scripts (x : device) =
+    !Xenopsd.run_hotplug_scripts || x.backend.domid > 0
+
+  (* Linux blkback in dom0, with xenopsd running the hotplug scripts: the
+     one case where hard_shutdown_complete waits for the backend to reach
+     Closed and the backend does not get there on its own. Once the frontend
+     nodes are gone, blkback unregisters the device, and xenbus writes
+     Closed on removal only if the backend is already Closing. *)
+  let needs_closing_before_force x =
+    x.backend.domid = 0 && x.backend.kind = Vbd "vbd" && run_hotplug_scripts x
+
   let hard_shutdown_request ~xs (x : device) =
     debug "Device.Generic.hard_shutdown_request %s" (string_of_device x) ;
     let backend_path = backend_path_of_device ~xs x in
     let online_path = backend_path // "online" in
     debug "xenstore-write %s = 0" online_path ;
     xs.Xs.write online_path "0" ;
+    ( if needs_closing_before_force x then
+        let state_path = backend_path // "state" in
+        Xs.transaction xs (fun t ->
+            let state =
+              try Xenbus_utils.of_string (t.Xst.read state_path)
+              with _ -> Xenbus_utils.Closed
+            in
+            if state <> Xenbus_utils.Closed then (
+              debug
+                "Device.Generic.hard_shutdown_request setting backend to \
+                 Closing" ;
+              t.Xst.write state_path
+                (Xenbus_utils.string_of Xenbus_utils.Closing)
+            )
+        )
+    ) ;
     debug "Device.Generic.hard_shutdown about to blow away frontend" ;
     safe_rm ~xs (frontend_rw_path_of_device ~xs x) ;
     safe_rm ~xs (frontend_ro_path_of_device ~xs x)
-
-  let run_hotplug_scripts (x : device) =
-    !Xenopsd.run_hotplug_scripts || x.backend.domid > 0
 
   let hard_shutdown_complete ~xs (x : device) =
     if is_qdisk_or_9pfs x then
