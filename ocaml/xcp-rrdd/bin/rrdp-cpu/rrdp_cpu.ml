@@ -57,16 +57,7 @@ let dss_vcpus xc doms =
         let dom_cpu_time =
           dom_cpu_time /. (1.0e9 *. float_of_int dom.Xenctrl.nr_online_vcpus)
         in
-        (* Runstate datasources need Xenctrl.Runstateinfo, a XenServer
-           patch to Xen's bindings and hypervisor that upstream Xen (and so
-           the RISC-V tree) does not carry: report the domain usage only. *)
-        ( Rrd.VM uuid
-        , Ds.ds_make ~name:"cpu_usage" ~units:"(fraction)"
-            ~description:"Domain CPU usage"
-            ~value:(Rrd.VT_Float dom_cpu_time) ~ty:Rrd.Derive ~default:true
-            ~min:0.0 ~max:1.0 ()
-        )
-        :: dss
+        Runstate.dss xc ~domid ~uuid ~dom_cpu_time dss
       in
       try cpus 0 dss with _ -> dss
     )
